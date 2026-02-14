@@ -1,0 +1,1 @@
+Built a full-featured eCommerce web application using Django with a dynamic product catalog supporting variants like size and color. Implemented cart, checkout, secure payments, order management, and user accounts. Deployed on AWS with scalable architecture and essential features for real-world online shopping.
