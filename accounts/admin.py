@@ -14,11 +14,18 @@ class AccountAdmin(UserAdmin):
     filter_horizontal = ()
     list_filter = ()
     fieldsets = ()
-
 class UserProfileAdmin(admin.ModelAdmin):
-    def thumbnail(self, object):
-        return format_html('<img src="{}" width="30" style="border-radius:50%;">'.format(object.profile_picture.url))
+
+    def thumbnail(self, obj):
+        if obj.profile_picture:
+            return format_html(
+                '<img src="{}" width="30" style="border-radius:50%;">',
+                obj.profile_picture.url
+            )
+        return "No Image"
+
     thumbnail.short_description = 'Profile Picture'
+
     list_display = ('thumbnail', 'user', 'city', 'state', 'country')
 
 admin.site.register(Account, AccountAdmin)
