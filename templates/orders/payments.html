@@ -1,0 +1,529 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+
+<section class="section-content padding-y bg">
+	<div class="container">
+
+		<!-- ============================ COMPONENT 1 ================================= -->
+		<h4 class="text-center mb-20">Review Your Order and Make Payment</h4>
+		<div class="row">
+
+			<aside class="col-lg-8">
+				<div class="card">
+					<h5 class="card-header">Billing Address</h5>
+					<div class="card-body">
+						<p class="card-text mb-0">{{order.full_name}}</p>
+						<p class="card-text mb-0">{{order.full_address}}</p>
+						<p class="card-text mb-0">{{order.city}}, {{order.state}}</p>
+						<p class="card-text mb-0">{{order.country}}</p>
+						<p class="card-text mb-0">{{order.email}}</p>
+						<p class="card-text mb-0">{{order.phone}}</p>
+						{% if order.order_note %}
+						<b>Order Note: </b> {{order.order_note}}
+						{% endif %}
+
+
+					</div>
+				</div>
+				<div class="card">
+					<h5 class="card-header">Payment Method</h5>
+					<div class="card-body">
+						<p class="card-text">PayPal</p>
+
+					</div>
+				</div>
+				<div class="card">
+					<h5 class="card-header">Review Products</h5>
+					<div class="card-body">
+						<table class="table table-borderless table-shopping-cart">
+							<thead class="text-muted">
+								<tr class="small text-uppercase">
+									<th scope="col">Product</th>
+									<th scope="col" width="120">Quantity</th>
+									<th scope="col" width="120">Price</th>
+
+								</tr>
+							</thead>
+							<tbody>
+
+								{% for cart_item in cart_items %}
+								<tr>
+									<td>
+										<figure class="itemside align-items-center">
+											<div class="aside"><img src="{{ cart_item.product.images.url }}" class="img-sm"></div>
+											<figcaption class="info">
+												<a href="{{ cart_item.product.get_url }}" class="title text-dark">{{ cart_item.product.product_name }}</a>
+												<p class="text-muted small">
+													{% if cart_item.variations.all %}
+													{% for item in cart_item.variations.all %}
+													{{ item.variation_category | capfirst }} : {{ item.variation_value | capfirst }} <br>
+													{% endfor %}
+													{% endif %}
+												</p>
+											</figcaption>
+										</figure>
+									</td>
+									<td>
+										<!-- col.// -->
+										<label for="">{{cart_item.quantity}}</label>
+									</td>
+									<td>
+										<div class="price-wrap">
+											<var class="price">$ {{ cart_item.sub_total }}</var>
+											<small class="text-muted"> $ {{ cart_item.product.price }} each </small>
+										</div> <!-- price-wrap .// -->
+									</td>
+
+								</tr>
+								{% endfor %}
+
+							</tbody>
+						</table>
+
+					</div>
+				</div>
+
+			</aside> <!-- col.// -->
+			<aside class="col-lg-4">
+
+				<div class="card">
+					<div class="card-body">
+						<dl class="dlist-align">
+							<dt>Total price:</dt>
+							<dd class="text-right">$ {{total}}</dd>
+						</dl>
+						<dl class="dlist-align">
+							<dt>Tax:</dt>
+							<dd class="text-right"> $ {{tax}}</dd>
+						</dl>
+						<dl class="dlist-align">
+							<dt>Grand Total:</dt>
+							<dd class="text-right text-dark b"><strong>$ {{grand_total}}</strong></dd>
+						</dl>
+						<hr>
+						<p class="text-center mb-3">
+							<img src="{% static './images/misc/payments.png' %}" height="26">
+						</p>
+
+                        <div
+                            id="payment-success"
+                            class="alert alert-success"
+                            style="display:none;"
+                        >
+                            <strong>Payment successful!</strong>
+                            <br>
+                            Your payment has been received successfully.
+                        </div>
+
+                        <div
+                            id="payment-error"
+                            class="alert alert-danger"
+                            style="display:none;"
+                        >
+                        </div>
+
+                        <div id="paypal-button-container">
+                            <!-- PayPal Button Will Load -->
+                        </div>
+						
+
+					</div> <!-- card-body.// -->
+				</div> <!-- card.// -->
+				<div class="alert alert-danger" role="alert">
+				  <b>Please Note: </b>This is a demo website. Do not try to make real payments.
+				</div>
+			</aside> <!-- col.// -->
+
+
+		</div> <!-- row.// -->
+
+		<!-- ============================ COMPONENT 1 END .// ================================= -->
+
+	</div> <!-- container .//  -->
+</section>
+<script
+    src="https://www.sandbox.paypal.com/web-sdk/v6/core"
+>
+</script>
+<script>
+ document.addEventListener("DOMContentLoaded", function() {
+	if (window.paypal) {
+		onPayPalWebSdkLoaded();
+	} else {
+		console.error("PayPal Web SDK not loaded");
+	}
+ });
+
+function getCookie(name) {
+    let cookieValue = null;
+
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(
+                    cookie.substring(name.length + 1)
+                );
+                break;
+            }
+        }
+    }
+
+    return cookieValue;
+}
+
+
+var amount = "{{ grand_total }}";
+var orderID = "{{ order.order_number }}";
+console.log("Order ID:", orderID);
+var redirect_url = "{% url 'order_complete' %}";
+
+
+async function onPayPalWebSdkLoaded() {
+
+        try {
+
+            // Get PayPal Client token from Django
+            const response = await fetch(
+                "/orders/paypal-api/auth/browser-safe-client-token/"
+            );
+
+            const data = await response.json();
+
+            const clientToken = data.clientToken;
+
+
+            // Create PayPal Web SDK instance
+            const sdkInstance = await window.paypal.createInstance({
+                clientToken: clientToken,
+                components: ["paypal-payments"],
+                pageType: "checkout",
+            });
+
+            console.log("PayPal SDK initialized successfully");
+
+
+            // Check whether PayPal is available
+
+
+            // Create PayPal payment session
+            const paypalPaymentSession =
+                sdkInstance.createPayPalOneTimePaymentSession({
+
+                async onApprove(data) {
+
+                console.log("PayPal approved!");
+
+                console.log(
+                    "PayPal Order ID:",
+                    data.orderId
+                );
+
+                        try {
+
+                            const captureUrl =
+                                "{% url 'capture_order' order_id='PAYPAL_ORDER_ID' %}"
+                                .replace(
+                                    "PAYPAL_ORDER_ID",
+                                    data.orderId
+                                );
+
+
+                            const response = await fetch(
+                                captureUrl,
+                                {
+                                    method: "POST",
+
+                                    headers: {
+                                        "Content-Type":
+                                            "application/json",
+
+                                        "X-CSRFToken":
+                                            getCookie("csrftoken")
+                                    },
+
+                                    body: JSON.stringify({
+
+                                        order_number:
+                                            orderID
+
+                                    })
+                                }
+                            );
+
+
+                            const result =
+                                await response.json();
+
+
+                            console.log(
+                                "Capture response:",
+                                result
+                            );
+
+
+                            if (
+                                !response.ok ||
+                                !result.success
+                            ) {
+
+                                throw new Error(
+                                    result.error ||
+                                    "Payment capture failed"
+                                );
+
+                            }
+
+
+                            // Payment completed successfully
+
+                            console.log(
+                                "Payment successfully captured!"
+                            );
+
+
+                            // Redirect to order complete
+
+                            window.location.href =
+                                "{% url 'order_complete' %}" +
+                                "?order_number=" +
+                                encodeURIComponent(
+                                    result.order_number
+                                ) +
+                                "&payment_id=" +
+                                encodeURIComponent(
+                                    result.payment_id
+                                );
+
+                        }
+                        catch (error) {
+
+                            console.error(
+                                "Payment capture failed:",
+                                error
+                            );
+
+                            showPaymentError(
+                                error.message
+                            );
+
+                        }
+
+                    },
+
+
+                    onCancel(data) {
+
+                        console.log("PayPal payment cancelled");
+
+                    },
+
+
+                    onError(error) {
+
+                        console.error(
+                            "PayPal error:",
+                            error
+                        );
+
+                    }
+
+                });
+
+
+            // Create PayPal button
+            const paypalButton =
+                document.createElement("paypal-button");
+
+
+            paypalButton.setAttribute(
+                "type",
+                "pay"
+            );
+
+
+            // Add button to your existing container
+            document
+                .getElementById("paypal-button-container")
+                .appendChild(paypalButton);
+
+
+            // When PayPal button is clicked
+            paypalButton.addEventListener(
+                "click",
+                async () => {
+
+                    try {
+
+                        console.log(
+                            "PayPal button clicked"
+                        );
+
+
+                        // IMPORTANT:
+                        // Do not await this before start()
+                        const createOrderPromise =
+                            createOrder();
+
+
+                        console.log("Starting PayPal payment session...");
+
+                    try {
+
+                        const result = await paypalPaymentSession.start(
+                            {
+                                presentationMode: "modal"
+                            },
+                            createOrderPromise
+                        );
+
+                        console.log(
+                            "PayPal payment session started:",
+                            result
+                        );
+
+                    } catch (error) {
+
+                        console.error(
+                            "PayPal payment session START failed:",
+                            error
+                        );
+
+                        throw error;
+                    }
+
+
+                    } catch (error) {
+
+                        console.error(
+                            "PayPal button error:",
+                            error
+                        );
+
+                    }
+
+                }
+            );
+
+
+            } catch (error) {
+
+                console.error(
+                    "PayPal SDK initialization failed:",
+                    error
+                );
+
+        }
+
+ }
+async function createOrder() {
+
+    console.log("Calling Django create-order...");
+    console.log("Django Order Number:", orderID);
+
+    const response = await fetch(
+        "{% url 'create_order' %}",
+        {
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+
+            body: JSON.stringify({
+                order_number: orderID
+            })
+        }
+    );
+
+    console.log(
+        "Django create-order HTTP status:",
+        response.status
+    );
+
+    const data = await response.json();
+
+    console.log(
+        "Django create-order response:",
+        data
+    );
+
+    if (!response.ok) {
+        throw new Error(
+            data.error || "Failed to create PayPal order"
+        );
+    }
+
+    if (!data.id) {
+        throw new Error(
+            "Django did not return a PayPal Order ID"
+        );
+    }
+
+    console.log(
+        "PayPal Order ID:",
+        data.id
+    );
+
+    return {
+        orderId: data.id
+    };
+}
+function showPaymentSuccess(orderId) {
+
+    const successElement =
+        document.getElementById(
+            "payment-success"
+        );
+
+    const paypalContainer =
+        document.getElementById(
+            "paypal-button-container"
+        );
+
+
+    successElement.innerHTML = `
+        <strong>Payment successful!</strong>
+        <br>
+        Your payment has been received successfully.
+        <br>
+        <small>
+            PayPal Order ID: ${orderId}
+        </small>
+    `;
+
+
+    successElement.style.display = "block";
+
+    paypalContainer.style.display = "none";
+}
+
+function showPaymentError(message) {
+
+    const errorElement =
+        document.getElementById(
+            "payment-error"
+        );
+
+
+    errorElement.innerHTML = `
+        <strong>Payment could not be completed.</strong>
+        <br>
+        ${message}
+    `;
+
+
+    errorElement.style.display = "block";
+}
+</script>
+
+
+{% endblock %}
+<!-- ========================= SECTION CONTENT END// ========================= -->
